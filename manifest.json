@@ -1,0 +1,16 @@
+{
+  "name": "Jarvis",
+  "short_name": "Jarvis",
+  "description": "Jarvis — ИИ-ассистент: отвечает на любом языке, пишет код, решает задачи.",
+  "start_url": "./index.html",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#0f0620",
+  "theme_color": "#120826",
+  "lang": "ru",
+  "icons": [
+    {"src": "icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any maskable"},
+    {"src": "icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any maskable"}
+  ]
+}
