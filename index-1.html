@@ -1,0 +1,327 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
+<meta name="theme-color" content="#120826">
+<title>Jarvis</title>
+<style>
+:root{
+  --bg:#0f0620; --bg2:#1a0b36; --card:#24104a; --line:#3a1f73;
+  --v1:#7c3aed; --v2:#a855f7; --v3:#c4b5fd; --text:#f3eeff; --mute:#a99bd1; --err:#ff7a9c;
+  --sat:env(safe-area-inset-top,0px); --sab:env(safe-area-inset-bottom,0px);
+}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{height:100%;margin:0}
+body{background:radial-gradient(120% 60% at 50% 0%,#2a1060 0%,var(--bg) 60%);color:var(--text);
+  font:16px/1.55 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;overflow:hidden}
+#app{height:100%;display:flex;flex-direction:column;padding-top:var(--sat)}
+header{display:flex;align-items:center;gap:10px;padding:10px 14px;border-bottom:1px solid var(--line);background:rgba(15,6,32,.7);backdrop-filter:blur(10px)}
+header h1{font-size:19px;margin:0;letter-spacing:.5px;flex:1;font-weight:700}
+header h1 small{display:block;font-size:11px;color:var(--mute);font-weight:400;letter-spacing:0}
+.ib{width:40px;height:40px;border-radius:12px;border:1px solid var(--line);background:var(--card);color:var(--v3);font-size:19px;display:grid;place-items:center;cursor:pointer}
+.ib:active{transform:scale(.93)}
+.orb{width:34px;height:34px;border-radius:50%;background:radial-gradient(circle at 30% 30%,#e9d5ff,var(--v2) 40%,var(--v1) 75%);box-shadow:0 0 18px var(--v1)}
+.orb.think{animation:pulse 1.1s ease-in-out infinite}
+@keyframes pulse{50%{transform:scale(1.18);box-shadow:0 0 34px var(--v2)}}
+#msgs{flex:1;overflow-y:auto;padding:16px 14px;display:flex;flex-direction:column;gap:14px;scroll-behavior:smooth}
+.m{max-width:92%;padding:11px 14px;border-radius:18px;word-wrap:break-word;overflow-wrap:anywhere}
+.m.u{align-self:flex-end;background:linear-gradient(135deg,var(--v1),var(--v2));border-bottom-right-radius:5px}
+.m.a{align-self:flex-start;background:var(--card);border:1px solid var(--line);border-bottom-left-radius:5px}
+.m.a.err{border-color:var(--err);color:var(--err)}
+.m p{margin:0 0 8px}.m p:last-child{margin:0}
+.m a{color:var(--v3)}
+.m pre{background:#0b0418;border:1px solid var(--line);border-radius:12px;padding:10px;overflow-x:auto;font-size:13px;margin:8px 0}
+.m code{font-family:ui-monospace,Menlo,Consolas,monospace;font-size:.9em;background:#0b0418;padding:1px 5px;border-radius:6px}
+.m pre code{background:none;padding:0}
+.m ul,.m ol{margin:4px 0 8px;padding-left:22px}
+.m h3,.m h4{margin:10px 0 4px}
+.src{display:flex;flex-wrap:wrap;gap:6px;margin-top:10px}
+.src a{font-size:12px;padding:3px 9px;border-radius:999px;border:1px solid var(--line);text-decoration:none;color:var(--v3);max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.tools{display:flex;gap:6px;margin-top:8px}
+.tools button{background:none;border:0;color:var(--mute);font-size:13px;padding:2px 6px;cursor:pointer}
+.empty{margin:auto;text-align:center;padding:20px}
+.empty .orb{width:84px;height:84px;margin:0 auto 18px;animation:pulse 3s ease-in-out infinite}
+.empty h2{margin:0 0 6px;font-size:26px}
+.empty p{color:var(--mute);margin:0 0 18px}
+.chips{display:flex;flex-wrap:wrap;gap:8px;justify-content:center}
+.chips button{background:var(--card);border:1px solid var(--line);color:var(--text);padding:9px 13px;border-radius:999px;font-size:14px;cursor:pointer}
+form{display:flex;gap:8px;align-items:flex-end;padding:10px 12px calc(10px + var(--sab));border-top:1px solid var(--line);background:rgba(15,6,32,.85)}
+textarea{flex:1;resize:none;max-height:140px;min-height:44px;border-radius:22px;border:1px solid var(--line);background:var(--card);color:var(--text);padding:11px 16px;font:inherit;outline:none}
+textarea:focus{border-color:var(--v2)}
+.send{background:linear-gradient(135deg,var(--v1),var(--v2));color:#fff;border:0;width:44px;height:44px;border-radius:50%;font-size:20px;cursor:pointer}
+.send:disabled{opacity:.5}
+.mic.on{background:var(--err);color:#fff}
+.web{font-size:12px;color:var(--mute);padding:6px 14px 0;display:flex;align-items:center;gap:6px}
+/* drawers */
+.scrim{position:fixed;inset:0;background:rgba(0,0,0,.55);opacity:0;pointer-events:none;transition:.2s;z-index:5}
+.scrim.show{opacity:1;pointer-events:auto}
+.panel{position:fixed;top:0;bottom:0;width:min(86vw,340px);background:var(--bg2);z-index:6;transition:transform .25s;padding:calc(14px + var(--sat)) 14px calc(14px + var(--sab));overflow-y:auto}
+#hist{left:0;transform:translateX(-102%);border-right:1px solid var(--line)}
+#set{right:0;transform:translateX(102%);border-left:1px solid var(--line)}
+#hist.open,#set.open{transform:none}
+.panel h3{margin:4px 0 12px}
+.chat{display:flex;align-items:center;gap:6px;padding:10px 12px;border-radius:12px;cursor:pointer;margin-bottom:4px}
+.chat.cur{background:var(--card)}
+.chat span{flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.chat b{color:var(--mute);font-weight:400;padding:0 6px}
+.new{width:100%;padding:12px;border-radius:12px;border:0;background:linear-gradient(135deg,var(--v1),var(--v2));color:#fff;font-size:15px;margin-bottom:12px;cursor:pointer}
+label{display:block;font-size:13px;color:var(--mute);margin:14px 0 5px}
+input,select,.panel textarea{width:100%;border-radius:12px;border:1px solid var(--line);background:var(--card);color:var(--text);padding:11px 12px;font:inherit;outline:none;min-height:44px}
+.panel textarea{border-radius:12px;max-height:none;min-height:90px}
+.row{display:flex;align-items:center;justify-content:space-between;margin-top:14px}
+.row input{width:auto;min-height:0;transform:scale(1.4)}
+.hint{font-size:12px;color:var(--mute);margin-top:6px}
+</style>
+</head>
+<body>
+<div id="app">
+  <header>
+    <button class="ib" id="bMenu" aria-label="Чаты">☰</button>
+    <div class="orb" id="orb"></div>
+    <h1>Jarvis<small id="sub">AI-ассистент с поиском в интернете</small></h1>
+    <button class="ib" id="bSet" aria-label="Настройки">⚙</button>
+  </header>
+  <div class="web" id="webInfo"></div>
+  <div id="msgs"></div>
+  <form id="f">
+    <button type="button" class="ib mic" id="bMic" aria-label="Голос">🎤</button>
+    <textarea id="inp" rows="1" placeholder="Спросите Jarvis на любом языке…"></textarea>
+    <button class="send" id="bSend" aria-label="Отправить">➤</button>
+  </form>
+</div>
+
+<div class="scrim" id="scrim"></div>
+<aside class="panel" id="hist">
+  <h3>Чаты</h3>
+  <button class="new" id="bNew">+ Новый чат</button>
+  <div id="list"></div>
+</aside>
+<aside class="panel" id="set">
+  <h3>Настройки</h3>
+  <label>Провайдер ИИ</label>
+  <select id="sProv">
+    <option value="gemini">Google Gemini (бесплатный ключ, поиск Google)</option>
+    <option value="anthropic">Anthropic Claude (поиск в интернете)</option>
+    <option value="openai">OpenAI-совместимый (без поиска)</option>
+  </select>
+  <label>API-ключ</label>
+  <input id="sKey" type="password" autocomplete="off" placeholder="Вставьте ключ">
+  <div class="hint" id="keyHint"></div>
+  <label>Модель</label>
+  <input id="sModel">
+  <div id="urlWrap" style="display:none"><label>Base URL</label><input id="sUrl" placeholder="https://api.openai.com/v1"></div>
+  <div class="row"><span>Поиск в интернете</span><input type="checkbox" id="sWeb"></div>
+  <div class="row"><span>Озвучивать ответы</span><input type="checkbox" id="sTts"></div>
+  <label>Язык голосового ввода</label>
+  <select id="sLang">
+    <option value="">Авто (язык устройства)</option>
+    <option value="ru-RU">Русский</option><option value="en-US">English</option>
+    <option value="uk-UA">Українська</option><option value="kk-KZ">Қазақша</option>
+    <option value="tr-TR">Türkçe</option><option value="es-ES">Español</option>
+    <option value="de-DE">Deutsch</option><option value="fr-FR">Français</option>
+    <option value="zh-CN">中文</option><option value="ar-SA">العربية</option>
+    <option value="hi-IN">हिन्दी</option><option value="ja-JP">日本語</option>
+  </select>
+  <label>Своя инструкция (необязательно)</label>
+  <textarea id="sSys" placeholder="Например: отвечай коротко и с юмором"></textarea>
+  <button class="new" id="bSave" style="margin-top:18px">Сохранить</button>
+  <button class="new" id="bClear" style="background:var(--card);border:1px solid var(--line)">Удалить все чаты</button>
+</aside>
+
+<script>
+(()=>{
+const $=id=>document.getElementById(id);
+const store={get(k,d){try{const v=localStorage.getItem(k);return v?JSON.parse(v):d}catch(e){return d}},
+  set(k,v){try{localStorage.setItem(k,JSON.stringify(v))}catch(e){}}};
+const DEF={prov:'gemini',key:'',model:'gemini-2.5-flash',url:'https://api.openai.com/v1',web:true,tts:false,lang:'',sys:''};
+const MODELS={gemini:'gemini-2.5-flash',anthropic:'claude-sonnet-5-5',openai:'gpt-4o-mini'};
+const HINTS={gemini:'Бесплатный ключ: aistudio.google.com/apikey',anthropic:'Ключ: console.anthropic.com',openai:'Любой сервис с OpenAI API (OpenAI, OpenRouter, Groq…)'};
+let cfg={...DEF,...store.get('jv_cfg',{})};
+let chats=store.get('jv_chats',[]);
+let cur=store.get('jv_cur',null);
+let busy=false;
+
+const esc=s=>s.replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+function md(src){
+  const blocks=[];
+  let t=src.replace(/```(\w*)\n?([\s\S]*?)```/g,(_,l,c)=>{blocks.push(`<pre><code>${esc(c.replace(/\n$/,''))}</code></pre>`);return `\u0000${blocks.length-1}\u0000`});
+  t=esc(t);
+  t=t.replace(/`([^`\n]+)`/g,'<code>$1</code>')
+     .replace(/\*\*([^*\n]+)\*\*/g,'<b>$1</b>')
+     .replace(/(^|[\s(])\*([^*\n]+)\*/g,'$1<i>$2</i>')
+     .replace(/\[([^\]]+)\]\((https?:\/\/[^)\s]+)\)/g,'<a href="$2" target="_blank" rel="noopener">$1</a>');
+  const out=[];let list=null;
+  const close=()=>{if(list){out.push(`</${list}>`);list=null}};
+  for(const ln of t.split('\n')){
+    let m;
+    if(m=ln.match(/^\s*[-*•]\s+(.*)/)){if(list!=='ul'){close();out.push('<ul>');list='ul'}out.push(`<li>${m[1]}</li>`)}
+    else if(m=ln.match(/^\s*\d+[.)]\s+(.*)/)){if(list!=='ol'){close();out.push('<ol>');list='ol'}out.push(`<li>${m[1]}</li>`)}
+    else if(m=ln.match(/^#{1,4}\s+(.*)/)){close();out.push(`<h3>${m[1]}</h3>`)}
+    else if(!ln.trim()){close()}
+    else{close();out.push(`<p>${ln}</p>`)}
+  }
+  close();
+  return out.join('').replace(/\u0000(\d+)\u0000/g,(_,i)=>blocks[i]).replace(/<p>(<pre>[\s\S]*?<\/pre>)<\/p>/g,'$1');
+}
+
+const getChat=()=>chats.find(c=>c.id===cur);
+function save(){store.set('jv_chats',chats);store.set('jv_cur',cur)}
+function newChat(){const c={id:Date.now().toString(36),title:'Новый чат',msgs:[]};chats.unshift(c);cur=c.id;save();render();return c}
+
+function render(){
+  const box=$('msgs');box.innerHTML='';
+  const c=getChat();
+  if(!c||!c.msgs.length){
+    box.innerHTML=`<div class="empty"><div class="orb"></div><h2>Я Jarvis</h2>
+      <p>Отвечаю на любом языке, ищу свежую информацию в интернете, пишу код и решаю задачи.</p>
+      <div class="chips">
+        <button>Какие новости сегодня?</button><button>Курс доллара сейчас</button>
+        <button>Write a Python web scraper</button><button>Объясни квантовую запутанность</button>
+        <button>Translate to Japanese: good morning</button></div></div>`;
+    box.querySelectorAll('.chips button').forEach(b=>b.onclick=()=>send(b.textContent));
+  }else c.msgs.forEach(addMsgEl);
+  box.scrollTop=box.scrollHeight;
+  renderList();
+  $('webInfo').textContent=cfg.web&&cfg.prov!=='openai'?'🌐 Поиск в интернете включён':'';
+}
+function addMsgEl(m){
+  const d=document.createElement('div');
+  d.className='m '+(m.role==='user'?'u':'a')+(m.err?' err':'');
+  d.innerHTML=m.role==='user'?`<p>${esc(m.text).replace(/\n/g,'<br>')}</p>`:md(m.text);
+  if(m.src&&m.src.length){
+    const s=document.createElement('div');s.className='src';
+    m.src.slice(0,6).forEach(x=>{const a=document.createElement('a');a.href=x.uri;a.target='_blank';a.rel='noopener';a.textContent='🔗 '+(x.title||x.uri);s.appendChild(a)});
+    d.appendChild(s);
+  }
+  if(m.role!=='user'&&!m.err){
+    const t=document.createElement('div');t.className='tools';
+    const cp=document.createElement('button');cp.textContent='Копировать';
+    cp.onclick=()=>{navigator.clipboard&&navigator.clipboard.writeText(m.text);cp.textContent='Скопировано'};
+    const sp=document.createElement('button');sp.textContent='Озвучить';sp.onclick=()=>speak(m.text);
+    t.append(cp,sp);d.appendChild(t);
+  }
+  $('msgs').appendChild(d);return d;
+}
+function renderList(){
+  const l=$('list');l.innerHTML='';
+  chats.forEach(c=>{
+    const d=document.createElement('div');d.className='chat'+(c.id===cur?' cur':'');
+    d.innerHTML=`<span>${esc(c.title)}</span><b>✕</b>`;
+    d.onclick=e=>{
+      if(e.target.tagName==='B'){chats=chats.filter(x=>x.id!==c.id);if(cur===c.id)cur=chats[0]?.id||null;save();render();return}
+      cur=c.id;save();render();panel('hist',false)};
+    l.appendChild(d);
+  });
+}
+function panel(id,open){$(id).classList.toggle('open',open);$('scrim').classList.toggle('show',open)}
+$('bMenu').onclick=()=>panel('hist',true);
+$('bSet').onclick=()=>{fillSet();panel('set',true)};
+$('scrim').onclick=()=>{panel('hist',false);panel('set',false)};
+$('bNew').onclick=()=>{newChat();panel('hist',false)};
+
+/* settings */
+function fillSet(){
+  $('sProv').value=cfg.prov;$('sKey').value=cfg.key;$('sModel').value=cfg.model;$('sUrl').value=cfg.url;
+  $('sWeb').checked=cfg.web;$('sTts').checked=cfg.tts;$('sLang').value=cfg.lang;$('sSys').value=cfg.sys;provUI();
+}
+function provUI(){const p=$('sProv').value;$('urlWrap').style.display=p==='openai'?'block':'none';$('keyHint').textContent=HINTS[p]}
+$('sProv').onchange=()=>{$('sModel').value=MODELS[$('sProv').value];provUI()};
+$('bSave').onclick=()=>{
+  cfg={prov:$('sProv').value,key:$('sKey').value.trim(),model:$('sModel').value.trim()||MODELS[$('sProv').value],
+    url:$('sUrl').value.trim().replace(/\/$/,''),web:$('sWeb').checked,tts:$('sTts').checked,lang:$('sLang').value,sys:$('sSys').value};
+  store.set('jv_cfg',cfg);panel('set',false);render();
+};
+$('bClear').onclick=()=>{if(confirm('Удалить все чаты?')){chats=[];cur=null;save();render();panel('set',false)}};
+
+/* AI */
+function sysPrompt(){
+  const now=new Date();
+  return `You are Jarvis, a powerful, friendly and precise AI assistant. `+
+  `ALWAYS reply in the same language the user writes in (you understand and speak every language). `+
+  `Today is ${now.toLocaleString('en-GB',{dateStyle:'full',timeStyle:'short'})} (${Intl.DateTimeFormat().resolvedOptions().timeZone}). `+
+  `For anything current (news, prices, weather, sports, versions, people in office) use web search and rely on the results. `+
+  `Be concise but complete, use Markdown, put code in fenced code blocks, and think step by step on hard tasks. `+
+  `If you are unsure, say so honestly.`+(cfg.sys?`\nUser instructions: ${cfg.sys}`:'');
+}
+async function post(url,headers,body){
+  const r=await fetch(url,{method:'POST',headers:{'Content-Type':'application/json',...headers},body:JSON.stringify(body)});
+  const j=await r.json().catch(()=>({}));
+  if(!r.ok)throw new Error(j.error?.message||j.error||('HTTP '+r.status));
+  return j;
+}
+async function ask(history){
+  const web=cfg.web;
+  if(cfg.prov==='gemini'){
+    const body={systemInstruction:{parts:[{text:sysPrompt()}]},
+      contents:history.map(m=>({role:m.role==='user'?'user':'model',parts:[{text:m.text}]}))};
+    if(web)body.tools=[{google_search:{}}];
+    const j=await post(`https://generativelanguage.googleapis.com/v1beta/models/${cfg.model}:generateContent?key=${encodeURIComponent(cfg.key)}`,{},body);
+    const cand=j.candidates?.[0];
+    const text=(cand?.content?.parts||[]).map(p=>p.text||'').join('').trim();
+    if(!text)throw new Error(j.promptFeedback?.blockReason?'Запрос заблокирован: '+j.promptFeedback.blockReason:'Пустой ответ');
+    const src=(cand.groundingMetadata?.groundingChunks||[]).map(c=>c.web).filter(Boolean);
+    return{text,src};
+  }
+  if(cfg.prov==='anthropic'){
+    const body={model:cfg.model,max_tokens:4096,system:sysPrompt(),messages:history.map(m=>({role:m.role==='user'?'user':'assistant',content:m.text}))};
+    if(web)body.tools=[{type:'web_search_20250305',name:'web_search',max_uses:5}];
+    const j=await post('https://api.anthropic.com/v1/messages',{'x-api-key':cfg.key,'anthropic-version':'2023-06-01','anthropic-dangerous-direct-browser-access':'true'},body);
+    const text=j.content.filter(b=>b.type==='text').map(b=>b.text).join('').trim();
+    const src=[];j.content.forEach(b=>{if(b.type==='web_search_tool_result'&&Array.isArray(b.content))b.content.forEach(r=>r.url&&src.push({uri:r.url,title:r.title}))});
+    return{text:text||'Пустой ответ',src};
+  }
+  const j=await post(cfg.url+'/chat/completions',{Authorization:'Bearer '+cfg.key},
+    {model:cfg.model,messages:[{role:'system',content:sysPrompt()},...history.map(m=>({role:m.role==='user'?'user':'assistant',content:m.text}))]});
+  return{text:j.choices?.[0]?.message?.content?.trim()||'Пустой ответ',src:[]};
+}
+
+async function send(text){
+  text=(text||'').trim();
+  if(!text||busy)return;
+  if(!cfg.key){panel('set',true);fillSet();return}
+  let c=getChat()||newChat();
+  c.msgs.push({role:'user',text});
+  if(c.msgs.length===1)c.title=text.slice(0,40);
+  $('inp').value='';autoH();busy=true;$('bSend').disabled=true;$('orb').classList.add('think');save();render();
+  const wait=document.createElement('div');wait.className='m a';wait.textContent='Jarvis думает…';$('msgs').appendChild(wait);$('msgs').scrollTop=1e9;
+  try{
+    const hist=c.msgs.filter(m=>!m.err).slice(-30);
+    const r=await ask(hist);
+    c.msgs.push({role:'assistant',text:r.text,src:r.src});
+    if(cfg.tts)speak(r.text);
+  }catch(e){c.msgs.push({role:'assistant',text:'Ошибка: '+e.message+'\nПроверьте ключ, модель и интернет в настройках.',err:true})}
+  busy=false;$('bSend').disabled=false;$('orb').classList.remove('think');save();render();
+}
+$('f').onsubmit=e=>{e.preventDefault();send($('inp').value)};
+$('inp').onkeydown=e=>{if(e.key==='Enter'&&!e.shiftKey&&window.innerWidth>800){e.preventDefault();send($('inp').value)}};
+function autoH(){const t=$('inp');t.style.height='auto';t.style.height=Math.min(t.scrollHeight,140)+'px'}
+$('inp').oninput=autoH;
+
+/* voice */
+function speak(t){
+  if(!('speechSynthesis' in window))return;
+  speechSynthesis.cancel();
+  const u=new SpeechSynthesisUtterance(t.replace(/```[\s\S]*?```/g,' код ').replace(/[*#`_>\[\]()]/g,'').slice(0,1500));
+  speechSynthesis.speak(u);
+}
+const SR=window.SpeechRecognition||window.webkitSpeechRecognition;
+let rec=null;
+$('bMic').onclick=()=>{
+  if(!SR){alert('Голосовой ввод не поддерживается на этом устройстве');return}
+  if(rec){rec.stop();return}
+  rec=new SR();rec.lang=cfg.lang||navigator.language||'en-US';rec.interimResults=true;
+  $('bMic').classList.add('on');
+  rec.onresult=e=>{$('inp').value=[...e.results].map(r=>r[0].transcript).join('');autoH()};
+  rec.onend=()=>{rec=null;$('bMic').classList.remove('on')};
+  rec.onerror=()=>{rec=null;$('bMic').classList.remove('on')};
+  rec.start();
+};
+
+if(!getChat())cur=chats[0]?.id||null;
+render();
+if(!cfg.key)setTimeout(()=>{fillSet();panel('set',true)},400);
+})();
+</script>
+</body>
+</html>
